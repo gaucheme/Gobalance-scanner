@@ -1,452 +1,502 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoBalance Bridge Server</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+// App.js - Main GoBalance Bridge App
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar,
+  Alert,
+} from 'react-native';
+import { BleManager } from 'react-native-ble-plx';
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+// WebSocket Server - Install: npm install react-native-tcp-socket
+import TcpSocket from 'react-native-tcp-socket';
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
+const App = () => {
+  const [bleManager] = useState(() => new BleManager());
+  const [device, setDevice] = useState(null);
+  const [connected, setConnected] = useState(false);
+  const [serverRunning, setServerRunning] = useState(false);
+  const [clients, setClients] = useState([]);
+  const [sensorData, setSensorData] = useState({ tiltX: 0, tiltY: 0 });
+  const [logs, setLogs] = useState([]);
+  const [ipAddress, setIpAddress] = useState('Detecting...');
 
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
+  // WebSocket server
+  let server = null;
+  const connectedClients = [];
 
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+  const addLog = (message, type = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => [{
+      id: Date.now(),
+      message,
+      type,
+      timestamp
+    }, ...prev.slice(0, 50)]);
+  };
 
-        .subtitle {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
+  // Get IP Address
+  useEffect(() => {
+    const getIPAddress = async () => {
+      try {
+        // Install: npm install react-native-network-info
+        const NetworkInfo = require('react-native-network-info');
+        const ip = await NetworkInfo.getIPV4Address();
+        setIpAddress(ip || 'Unable to detect');
+      } catch (error) {
+        setIpAddress('Install react-native-network-info');
+      }
+    };
+    getIPAddress();
+  }, []);
 
-        .alert {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
+  // Start WebSocket Server
+  const startServer = () => {
+    try {
+      server = TcpSocket.createServer((socket) => {
+        addLog('Client connected!', 'success');
+        connectedClients.push(socket);
+        setClients(prev => [...prev, socket]);
 
-        .alert-success {
-            background: #d1f2eb;
-            border-left-color: #48bb78;
-        }
-
-        .alert-danger {
-            background: #f8d7da;
-            border-left-color: #f56565;
-        }
-
-        button {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 10px;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5568d3;
-        }
-
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-
-        .status-box {
-            background: #f7fafc;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .status-item:last-child {
-            border-bottom: none;
-        }
-
-        .status-label {
-            font-weight: 600;
-            color: #4a5568;
-        }
-
-        .status-value {
-            color: #2d3748;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .badge-success {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .badge-danger {
-            background: #fed7d7;
-            color: #742a2a;
-        }
-
-        .badge-warning {
-            background: #feebc8;
-            color: #744210;
-        }
-
-        .sensor-data {
-            background: #1a202c;
-            color: #e2e8f0;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 15px;
-        }
-
-        .data-row {
-            margin-bottom: 5px;
-        }
-
-        .log-time {
-            color: #718096;
-        }
-
-        .ip-box {
-            background: #e6f2ff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .ip-address {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2c5282;
-            font-family: 'Courier New', monospace;
-        }
-
-        .qr-placeholder {
-            width: 200px;
-            height: 200px;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            margin: 15px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #a0aec0;
-        }
-
-        .instructions {
-            background: #f7fafc;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-
-        .instructions ol {
-            margin-left: 20px;
-            line-height: 1.8;
-        }
-
-        .instructions li {
-            margin-bottom: 8px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="card">
-            <h1>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2z"/>
-                </svg>
-                GoBalance Bridge Server
-            </h1>
-            <p class="subtitle">Connect your GoBalance board and stream data to the web game</p>
-
-            <div id="instructions" class="alert">
-                <strong>⚠️ Important Setup:</strong> This bridge runs in your phone's browser. It will connect to your GoBalance board via Bluetooth and send data to the web game.
-            </div>
-        </div>
-
-        <div class="card">
-            <h2 style="font-size: 18px; margin-bottom: 15px;">Step 1: Connect GoBalance Board</h2>
-            <button id="connectBoardBtn" class="btn-primary">
-                📱 Connect to GoBalance Board
-            </button>
-            <button id="disconnectBoardBtn" class="btn-danger" style="display: none;">
-                Disconnect Board
-            </button>
-
-            <div class="status-box">
-                <div class="status-item">
-                    <span class="status-label">Board Status:</span>
-                    <span id="boardStatus" class="badge badge-danger">Disconnected</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Device:</span>
-                    <span id="deviceName" class="status-value">-</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2 style="font-size: 18px; margin-bottom: 15px;">Step 2: Server Information</h2>
-            
-            <div class="ip-box">
-                <div style="font-size: 14px; color: #4a5568; margin-bottom: 5px;">Your Phone's IP Address</div>
-                <div id="ipAddress" class="ip-address">Detecting...</div>
-                <div style="font-size: 12px; color: #718096; margin-top: 10px;">
-                    Enter this in the web game: <strong>ws://[IP]:8080</strong>
-                </div>
-            </div>
-
-            <div class="alert alert-danger" id="noServerWarning">
-                <strong>⚠️ Cannot Start Server:</strong> WebSocket server functionality is not available in browser environments. 
-                <br><br>
-                <strong>Alternative Solution:</strong> For now, this bridge will simulate sending data via local JavaScript. To build a real bridge, you'll need to create a native mobile app or use a tool like Termux on Android.
-            </div>
-
-            <div class="instructions">
-                <strong>For Testing:</strong>
-                <ol>
-                    <li>Open the web game on your computer</li>
-                    <li>Connect your GoBalance board here</li>
-                    <li>The bridge will simulate sending data (logged below)</li>
-                    <li>For production, build a native app bridge</li>
-                </ol>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2 style="font-size: 18px; margin-bottom: 15px;">Live Sensor Data</h2>
-            <div class="status-box">
-                <div class="status-item">
-                    <span class="status-label">Tilt X:</span>
-                    <span id="tiltX" class="status-value">0°</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Tilt Y:</span>
-                    <span id="tiltY" class="status-value">0°</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Data Rate:</span>
-                    <span id="dataRate" class="status-value">0 Hz</span>
-                </div>
-            </div>
-
-            <div class="sensor-data" id="sensorLog">
-                <div class="data-row">Waiting for sensor data...</div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let device = null;
-        let server = null;
-        let characteristic = null;
-        let connected = false;
-        let dataCount = 0;
-        let lastDataTime = Date.now();
-
-        // Try to detect IP address (limited in browser)
-        function detectIPAddress() {
-            // This is a simplified version - real IP detection in browser is limited
-            document.getElementById('ipAddress').textContent = 'Use: localhost:8080 for testing';
-        }
-
-        function addLog(message) {
-            const logDiv = document.getElementById('sensorLog');
-            const timestamp = new Date().toLocaleTimeString();
-            const row = document.createElement('div');
-            row.className = 'data-row';
-            row.innerHTML = `<span class="log-time">[${timestamp}]</span> ${message}`;
-            logDiv.insertBefore(row, logDiv.firstChild);
-            
-            // Keep only last 20 entries
-            while (logDiv.children.length > 20) {
-                logDiv.removeChild(logDiv.lastChild);
+        // Handle WebSocket handshake
+        socket.on('data', (data) => {
+          const message = data.toString();
+          
+          // Simple WebSocket handshake
+          if (message.includes('Upgrade: websocket')) {
+            const key = message.match(/Sec-WebSocket-Key: (.+)/)?.[1]?.trim();
+            if (key) {
+              const crypto = require('crypto');
+              const accept = crypto
+                .createHash('sha1')
+                .update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
+                .digest('base64');
+              
+              const response = [
+                'HTTP/1.1 101 Switching Protocols',
+                'Upgrade: websocket',
+                'Connection: Upgrade',
+                `Sec-WebSocket-Accept: ${accept}`,
+                '',
+                ''
+              ].join('\r\n');
+              
+              socket.write(response);
+              addLog('WebSocket handshake completed', 'success');
             }
+          }
+        });
+
+        socket.on('close', () => {
+          addLog('Client disconnected', 'info');
+          const index = connectedClients.indexOf(socket);
+          if (index > -1) connectedClients.splice(index, 1);
+          setClients(connectedClients);
+        });
+
+        socket.on('error', (error) => {
+          addLog(`Socket error: ${error.message}`, 'error');
+        });
+      }).listen({ port: 8080, host: '0.0.0.0' });
+
+      server.on('error', (error) => {
+        addLog(`Server error: ${error.message}`, 'error');
+        setServerRunning(false);
+      });
+
+      setServerRunning(true);
+      addLog('WebSocket server started on port 8080', 'success');
+    } catch (error) {
+      addLog(`Failed to start server: ${error.message}`, 'error');
+    }
+  };
+
+  // Send data to all connected clients
+  const broadcastSensorData = (tiltX, tiltY) => {
+    const data = JSON.stringify({
+      type: 'sensor',
+      tiltX,
+      tiltY,
+      timestamp: Date.now()
+    });
+
+    // WebSocket frame format (simple text frame)
+    const frame = Buffer.alloc(data.length + 2);
+    frame[0] = 0x81; // FIN + Text frame
+    frame[1] = data.length; // Payload length
+    frame.write(data, 2);
+
+    connectedClients.forEach(client => {
+      try {
+        client.write(frame);
+      } catch (error) {
+        console.error('Error sending to client:', error);
+      }
+    });
+  };
+
+  // Scan for GoBalance device
+  const scanForDevice = async () => {
+    try {
+      addLog('Scanning for GoBalance board...', 'info');
+      
+      // Request permissions first (Android)
+      const granted = await bleManager.requestPermissions();
+      if (!granted) {
+        Alert.alert('Error', 'Bluetooth permissions required');
+        return;
+      }
+
+      bleManager.startDeviceScan(null, null, (error, scannedDevice) => {
+        if (error) {
+          addLog(`Scan error: ${error.message}`, 'error');
+          return;
         }
 
-        async function connectToBoard() {
+        // Look for GoBalance device
+        if (scannedDevice?.name?.includes('GoBalance')) {
+          addLog(`Found: ${scannedDevice.name}`, 'success');
+          bleManager.stopDeviceScan();
+          setDevice(scannedDevice);
+        }
+      });
+
+      // Stop scan after 10 seconds
+      setTimeout(() => {
+        bleManager.stopDeviceScan();
+        if (!device) {
+          addLog('No GoBalance device found', 'error');
+        }
+      }, 10000);
+
+    } catch (error) {
+      addLog(`Error: ${error.message}`, 'error');
+    }
+  };
+
+  // Connect to device
+  const connectToDevice = async () => {
+    if (!device) return;
+
+    try {
+      addLog(`Connecting to ${device.name}...`, 'info');
+      
+      const connectedDevice = await device.connect();
+      await connectedDevice.discoverAllServicesAndCharacteristics();
+      
+      setConnected(true);
+      addLog('Connected! Discovering services...', 'success');
+
+      // Get all services
+      const services = await connectedDevice.services();
+      addLog(`Found ${services.length} services`, 'info');
+
+      // Subscribe to all notify characteristics
+      for (const service of services) {
+        const characteristics = await service.characteristics();
+        
+        for (const char of characteristics) {
+          if (char.isNotifiable) {
             try {
-                addLog('Scanning for GoBalance board...');
-                
-                // Request device
-                device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['battery_service', 'device_information', 'generic_access']
-                });
-
-                addLog(`Found: ${device.name || 'Unknown device'}`);
-                document.getElementById('deviceName').textContent = device.name || 'Unknown';
-
-                // Connect
-                addLog('Connecting...');
-                server = await device.gatt.connect();
-                connected = true;
-
-                // Update UI
-                document.getElementById('boardStatus').className = 'badge badge-success';
-                document.getElementById('boardStatus').textContent = 'Connected';
-                document.getElementById('connectBoardBtn').style.display = 'none';
-                document.getElementById('disconnectBoardBtn').style.display = 'block';
-
-                addLog('✓ Connected! Discovering services...');
-
-                // Discover services
-                const services = await server.getPrimaryServices();
-                addLog(`Found ${services.length} services`);
-
-                // Try to find and subscribe to sensor data
-                for (const service of services) {
-                    const characteristics = await service.getCharacteristics();
-                    
-                    for (const char of characteristics) {
-                        if (char.properties.notify) {
-                            addLog(`Found notify characteristic: ${char.uuid.slice(0, 8)}...`);
-                            
-                            // Try to subscribe
-                            try {
-                                await char.startNotifications();
-                                
-                                char.addEventListener('characteristicvaluechanged', (event) => {
-                                    const value = event.target.value;
-                                    const bytes = Array.from(new Uint8Array(value.buffer));
-                                    
-                                    // Try to parse as sensor data
-                                    // This is a guess - real format needs to be discovered
-                                    let tiltX = 0;
-                                    let tiltY = 0;
-                                    
-                                    if (bytes.length >= 4) {
-                                        // Assume 2 bytes per axis, signed int16
-                                        tiltX = ((bytes[1] << 8) | bytes[0]);
-                                        tiltY = ((bytes[3] << 8) | bytes[2]);
-                                        
-                                        // Convert to signed
-                                        if (tiltX > 32767) tiltX -= 65536;
-                                        if (tiltY > 32767) tiltY -= 65536;
-                                        
-                                        // Scale to degrees (-45 to +45)
-                                        tiltX = (tiltX / 1000) * 45;
-                                        tiltY = (tiltY / 1000) * 45;
-                                        
-                                        // Update display
-                                        document.getElementById('tiltX').textContent = tiltX.toFixed(1) + '°';
-                                        document.getElementById('tiltY').textContent = tiltY.toFixed(1) + '°';
-                                        
-                                        // Calculate data rate
-                                        dataCount++;
-                                        const now = Date.now();
-                                        if (now - lastDataTime >= 1000) {
-                                            document.getElementById('dataRate').textContent = dataCount + ' Hz';
-                                            dataCount = 0;
-                                            lastDataTime = now;
-                                        }
-                                    }
-                                    
-                                    // Log raw data occasionally
-                                    if (Math.random() < 0.1) {
-                                        addLog(`Data: [${bytes.join(', ')}] → X:${tiltX.toFixed(1)}° Y:${tiltY.toFixed(1)}°`);
-                                    }
-                                });
-                                
-                                addLog(`✓ Subscribed to sensor data on ${char.uuid.slice(0, 8)}...`);
-                                characteristic = char;
-                                
-                            } catch (e) {
-                                addLog(`Could not subscribe to ${char.uuid.slice(0, 8)}: ${e.message}`);
-                            }
-                        }
-                    }
+              await char.monitor((error, characteristic) => {
+                if (error) {
+                  addLog(`Monitor error: ${error.message}`, 'error');
+                  return;
                 }
 
-            } catch (error) {
-                addLog(`❌ Error: ${error.message}`);
-                console.error('Connection error:', error);
+                const value = characteristic.value;
+                if (value) {
+                  // Decode base64 to bytes
+                  const bytes = Buffer.from(value, 'base64');
+                  
+                  // Parse sensor data (adjust this based on actual format)
+                  if (bytes.length >= 4) {
+                    // Assume 2 bytes per axis as signed int16 little-endian
+                    let tiltX = bytes.readInt16LE(0);
+                    let tiltY = bytes.readInt16LE(2);
+                    
+                    // Scale to degrees (-45 to +45)
+                    tiltX = (tiltX / 1000) * 45;
+                    tiltY = (tiltY / 1000) * 45;
+                    
+                    // Clamp values
+                    tiltX = Math.max(-45, Math.min(45, tiltX));
+                    tiltY = Math.max(-45, Math.min(45, tiltY));
+                    
+                    setSensorData({ tiltX, tiltY });
+                    
+                    // Broadcast to web game
+                    broadcastSensorData(tiltX, tiltY);
+                  }
+                }
+              });
+              
+              addLog(`Subscribed to ${char.uuid.slice(0, 8)}...`, 'success');
+            } catch (e) {
+              // Not all characteristics can be monitored
             }
+          }
         }
+      }
 
-        function disconnectBoard() {
-            if (device && device.gatt.connected) {
-                device.gatt.disconnect();
-                connected = false;
-                
-                document.getElementById('boardStatus').className = 'badge badge-danger';
-                document.getElementById('boardStatus').textContent = 'Disconnected';
-                document.getElementById('connectBoardBtn').style.display = 'block';
-                document.getElementById('disconnectBoardBtn').style.display = 'none';
-                document.getElementById('deviceName').textContent = '-';
-                
-                addLog('Disconnected from board');
-            }
-        }
+    } catch (error) {
+      addLog(`Connection error: ${error.message}`, 'error');
+      setConnected(false);
+    }
+  };
 
-        document.getElementById('connectBoardBtn').addEventListener('click', connectToBoard);
-        document.getElementById('disconnectBoardBtn').addEventListener('click', disconnectBoard);
+  // Disconnect
+  const disconnect = async () => {
+    if (device && connected) {
+      try {
+        await device.cancelConnection();
+        setConnected(false);
+        setDevice(null);
+        addLog('Disconnected from board', 'info');
+      } catch (error) {
+        addLog(`Disconnect error: ${error.message}`, 'error');
+      }
+    }
+  };
 
-        // Initialize
-        detectIPAddress();
-        addLog('Bridge server ready. Click "Connect to GoBalance Board" to start.');
-    </script>
-</body>
-</html>
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>GoBalance Bridge</Text>
+        <Text style={styles.subtitle}>Connect board & stream to web game</Text>
+      </View>
+
+      <ScrollView style={styles.content}>
+        {/* Server Status */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>WebSocket Server</Text>
+          <View style={styles.statusRow}>
+            <Text style={styles.label}>Status:</Text>
+            <Text style={[styles.badge, serverRunning ? styles.badgeSuccess : styles.badgeDanger]}>
+              {serverRunning ? 'Running' : 'Stopped'}
+            </Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.label}>IP Address:</Text>
+            <Text style={styles.value}>{ipAddress}</Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.label}>Port:</Text>
+            <Text style={styles.value}>8080</Text>
+          </View>
+          <View style={styles.statusRow}>
+            <Text style={styles.label}>Clients:</Text>
+            <Text style={styles.value}>{clients.length}</Text>
+          </View>
+          
+          {!serverRunning && (
+            <TouchableOpacity style={styles.btnPrimary} onPress={startServer}>
+              <Text style={styles.btnText}>Start Server</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* GoBalance Connection */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>GoBalance Board</Text>
+          <View style={styles.statusRow}>
+            <Text style={styles.label}>Status:</Text>
+            <Text style={[styles.badge, connected ? styles.badgeSuccess : styles.badgeDanger]}>
+              {connected ? 'Connected' : 'Disconnected'}
+            </Text>
+          </View>
+          {device && (
+            <View style={styles.statusRow}>
+              <Text style={styles.label}>Device:</Text>
+              <Text style={styles.value}>{device.name}</Text>
+            </View>
+          )}
+          
+          {!connected ? (
+            <>
+              {!device ? (
+                <TouchableOpacity style={styles.btnPrimary} onPress={scanForDevice}>
+                  <Text style={styles.btnText}>Scan for Board</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.btnSuccess} onPress={connectToDevice}>
+                  <Text style={styles.btnText}>Connect to {device.name}</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <TouchableOpacity style={styles.btnDanger} onPress={disconnect}>
+              <Text style={styles.btnText}>Disconnect</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Sensor Data */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Live Sensor Data</Text>
+          <View style={styles.sensorRow}>
+            <Text style={styles.sensorLabel}>Tilt X:</Text>
+            <Text style={styles.sensorValue}>{sensorData.tiltX.toFixed(1)}°</Text>
+          </View>
+          <View style={styles.sensorRow}>
+            <Text style={styles.sensorLabel}>Tilt Y:</Text>
+            <Text style={styles.sensorValue}>{sensorData.tiltY.toFixed(1)}°</Text>
+          </View>
+        </View>
+
+        {/* Logs */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Activity Log</Text>
+          <View style={styles.logContainer}>
+            {logs.map(log => (
+              <Text key={log.id} style={[styles.logEntry, styles[`log${log.type.charAt(0).toUpperCase() + log.type.slice(1)}`]]}>
+                [{log.timestamp}] {log.message}
+              </Text>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1e3c72',
+  },
+  header: {
+    padding: 20,
+    paddingTop: 50,
+    backgroundColor: '#2a5298',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#e0e0e0',
+    marginTop: 5,
+  },
+  content: {
+    flex: 1,
+    padding: 15,
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  value: {
+    fontSize: 14,
+    color: '#333',
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  badgeSuccess: {
+    backgroundColor: '#c6f6d5',
+    color: '#22543d',
+  },
+  badgeDanger: {
+    backgroundColor: '#fed7d7',
+    color: '#742a2a',
+  },
+  btnPrimary: {
+    backgroundColor: '#667eea',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 15,
+  },
+  btnSuccess: {
+    backgroundColor: '#48bb78',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 15,
+  },
+  btnDanger: {
+    backgroundColor: '#f56565',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 15,
+  },
+  btnText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  sensorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sensorLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  sensorValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#667eea',
+  },
+  logContainer: {
+    backgroundColor: '#1a202c',
+    padding: 15,
+    borderRadius: 8,
+    maxHeight: 200,
+  },
+  logEntry: {
+    fontSize: 12,
+    marginBottom: 5,
+    fontFamily: 'monospace',
+  },
+  logInfo: {
+    color: '#90cdf4',
+  },
+  logSuccess: {
+    color: '#68d391',
+  },
+  logError: {
+    color: '#fc8181',
+  },
+});
+
+export default App;

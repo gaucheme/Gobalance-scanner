@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoBalance - Balance Challenge</title>
+    <title>GoBalance Bridge Server</title>
     <style>
         * {
             margin: 0;
@@ -13,80 +13,67 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .game-container {
-            width: 100%;
-            max-width: 800px;
             padding: 20px;
         }
 
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 20px;
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
         }
 
-        .header h1 {
-            font-size: 2.5em;
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .connection-panel {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .connection-status {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .status-indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-disconnected {
-            background: #f56565;
-        }
-
-        .status-connected {
-            background: #48bb78;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .controls {
-            display: flex;
             gap: 10px;
-            flex-wrap: wrap;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d1f2eb;
+            border-left-color: #48bb78;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            border-left-color: #f56565;
         }
 
         button {
-            padding: 12px 24px;
+            width: 100%;
+            padding: 15px;
             border: none;
             border-radius: 8px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            margin-bottom: 10px;
         }
 
         .btn-primary {
@@ -96,7 +83,6 @@
 
         .btn-primary:hover {
             background: #5568d3;
-            transform: translateY(-2px);
         }
 
         .btn-success {
@@ -109,400 +95,358 @@
             color: white;
         }
 
-        .game-canvas-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            border-radius: 10px;
-            background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .stat-box {
+        .status-box {
             background: #f7fafc;
             padding: 15px;
             border-radius: 8px;
-            text-align: center;
+            margin-bottom: 15px;
         }
 
-        .stat-label {
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 5px;
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
         }
 
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .status-value {
             color: #2d3748;
         }
 
-        .controls-hint {
-            background: #fff3cd;
-            padding: 12px;
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .badge-danger {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .badge-warning {
+            background: #feebc8;
+            color: #744210;
+        }
+
+        .sensor-data {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+
+        .data-row {
+            margin-bottom: 5px;
+        }
+
+        .log-time {
+            color: #718096;
+        }
+
+        .ip-box {
+            background: #e6f2ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .ip-address {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c5282;
+            font-family: 'Courier New', monospace;
+        }
+
+        .qr-placeholder {
+            width: 200px;
+            height: 200px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 15px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a0aec0;
+        }
+
+        .instructions {
+            background: #f7fafc;
+            padding: 15px;
             border-radius: 8px;
             margin-top: 15px;
-            font-size: 14px;
-            color: #856404;
         }
 
-        input[type="text"] {
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 14px;
-            width: 200px;
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
         }
 
-        .ws-url-input {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
+        .instructions li {
+            margin-bottom: 8px;
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="header">
-            <h1>🎮 Balance Challenge</h1>
-            <p>Keep the ball balanced and collect stars!</p>
+    <div class="container">
+        <div class="card">
+            <h1>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2z"/>
+                </svg>
+                GoBalance Bridge Server
+            </h1>
+            <p class="subtitle">Connect your GoBalance board and stream data to the web game</p>
+
+            <div id="instructions" class="alert">
+                <strong>⚠️ Important Setup:</strong> This bridge runs in your phone's browser. It will connect to your GoBalance board via Bluetooth and send data to the web game.
+            </div>
         </div>
 
-        <div class="connection-panel">
-            <div class="connection-status">
-                <div id="statusIndicator" class="status-indicator status-disconnected"></div>
-                <div>
-                    <strong>Connection Status:</strong> <span id="statusText">Disconnected</span>
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 15px;">Step 1: Connect GoBalance Board</h2>
+            <button id="connectBoardBtn" class="btn-primary">
+                📱 Connect to GoBalance Board
+            </button>
+            <button id="disconnectBoardBtn" class="btn-danger" style="display: none;">
+                Disconnect Board
+            </button>
+
+            <div class="status-box">
+                <div class="status-item">
+                    <span class="status-label">Board Status:</span>
+                    <span id="boardStatus" class="badge badge-danger">Disconnected</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Device:</span>
+                    <span id="deviceName" class="status-value">-</span>
                 </div>
             </div>
-
-            <div class="ws-url-input">
-                <input type="text" id="wsUrl" placeholder="ws://192.168.1.x:8080" value="ws://localhost:8080">
-                <button class="btn-primary" onclick="connectToPhone()">Connect to Phone</button>
-                <button class="btn-danger" onclick="disconnect()" style="display: none;" id="disconnectBtn">Disconnect</button>
-            </div>
-
-            <div class="controls-hint">
-                <strong>🎮 Keyboard Controls (Testing):</strong> Arrow Keys or WASD to tilt the platform
-            </div>
         </div>
 
-        <div class="game-canvas-container">
-            <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 15px;">Step 2: Server Information</h2>
             
-            <div class="stats">
-                <div class="stat-box">
-                    <div class="stat-label">Score</div>
-                    <div class="stat-value" id="score">0</div>
+            <div class="ip-box">
+                <div style="font-size: 14px; color: #4a5568; margin-bottom: 5px;">Your Phone's IP Address</div>
+                <div id="ipAddress" class="ip-address">Detecting...</div>
+                <div style="font-size: 12px; color: #718096; margin-top: 10px;">
+                    Enter this in the web game: <strong>ws://[IP]:8080</strong>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-label">Time</div>
-                    <div class="stat-value" id="time">0:00</div>
+            </div>
+
+            <div class="alert alert-danger" id="noServerWarning">
+                <strong>⚠️ Cannot Start Server:</strong> WebSocket server functionality is not available in browser environments. 
+                <br><br>
+                <strong>Alternative Solution:</strong> For now, this bridge will simulate sending data via local JavaScript. To build a real bridge, you'll need to create a native mobile app or use a tool like Termux on Android.
+            </div>
+
+            <div class="instructions">
+                <strong>For Testing:</strong>
+                <ol>
+                    <li>Open the web game on your computer</li>
+                    <li>Connect your GoBalance board here</li>
+                    <li>The bridge will simulate sending data (logged below)</li>
+                    <li>For production, build a native app bridge</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size: 18px; margin-bottom: 15px;">Live Sensor Data</h2>
+            <div class="status-box">
+                <div class="status-item">
+                    <span class="status-label">Tilt X:</span>
+                    <span id="tiltX" class="status-value">0°</span>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-label">Tilt X</div>
-                    <div class="stat-value" id="tiltX">0°</div>
+                <div class="status-item">
+                    <span class="status-label">Tilt Y:</span>
+                    <span id="tiltY" class="status-value">0°</span>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-label">Tilt Y</div>
-                    <div class="stat-value" id="tiltY">0°</div>
+                <div class="status-item">
+                    <span class="status-label">Data Rate:</span>
+                    <span id="dataRate" class="status-value">0 Hz</span>
                 </div>
+            </div>
+
+            <div class="sensor-data" id="sensorLog">
+                <div class="data-row">Waiting for sensor data...</div>
             </div>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        let ws = null;
+        let device = null;
+        let server = null;
+        let characteristic = null;
         let connected = false;
-        
-        // Game state
-        let tiltX = 0; // -45 to +45 degrees
-        let tiltY = 0; // -45 to +45 degrees
-        let ball = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 20,
-            vx: 0,
-            vy: 0
-        };
-        let stars = [];
-        let score = 0;
-        let gameTime = 0;
-        let lastTime = Date.now();
+        let dataCount = 0;
+        let lastDataTime = Date.now();
 
-        // Keyboard controls for testing
-        const keys = {};
-        document.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-        });
-        document.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
+        // Try to detect IP address (limited in browser)
+        function detectIPAddress() {
+            // This is a simplified version - real IP detection in browser is limited
+            document.getElementById('ipAddress').textContent = 'Use: localhost:8080 for testing';
+        }
 
-        function connectToPhone() {
-            const url = document.getElementById('wsUrl').value;
+        function addLog(message) {
+            const logDiv = document.getElementById('sensorLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const row = document.createElement('div');
+            row.className = 'data-row';
+            row.innerHTML = `<span class="log-time">[${timestamp}]</span> ${message}`;
+            logDiv.insertBefore(row, logDiv.firstChild);
             
+            // Keep only last 20 entries
+            while (logDiv.children.length > 20) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        async function connectToBoard() {
             try {
-                ws = new WebSocket(url);
+                addLog('Scanning for GoBalance board...');
                 
-                ws.onopen = () => {
-                    connected = true;
-                    updateConnectionStatus(true);
-                    console.log('Connected to phone bridge!');
-                };
-                
-                ws.onmessage = (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data.type === 'sensor') {
-                            tiltX = data.tiltX || 0;
-                            tiltY = data.tiltY || 0;
-                        }
-                    } catch (e) {
-                        console.error('Error parsing message:', e);
-                    }
-                };
-                
-                ws.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                    updateConnectionStatus(false);
-                };
-                
-                ws.onclose = () => {
-                    connected = false;
-                    updateConnectionStatus(false);
-                    console.log('Disconnected from phone bridge');
-                };
-                
-            } catch (error) {
-                console.error('Connection error:', error);
-                alert('Failed to connect. Make sure the phone bridge is running!');
-            }
-        }
+                // Request device
+                device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['battery_service', 'device_information', 'generic_access']
+                });
 
-        function disconnect() {
-            if (ws) {
-                ws.close();
-                ws = null;
-            }
-            connected = false;
-            updateConnectionStatus(false);
-        }
+                addLog(`Found: ${device.name || 'Unknown device'}`);
+                document.getElementById('deviceName').textContent = device.name || 'Unknown';
 
-        function updateConnectionStatus(isConnected) {
-            const indicator = document.getElementById('statusIndicator');
-            const text = document.getElementById('statusText');
-            const disconnectBtn = document.getElementById('disconnectBtn');
-            
-            if (isConnected) {
-                indicator.className = 'status-indicator status-connected';
-                text.textContent = 'Connected to Phone Bridge';
-                disconnectBtn.style.display = 'inline-block';
-            } else {
-                indicator.className = 'status-indicator status-disconnected';
-                text.textContent = 'Disconnected - Using Keyboard';
-                disconnectBtn.style.display = 'none';
-            }
-        }
+                // Connect
+                addLog('Connecting...');
+                server = await device.gatt.connect();
+                connected = true;
 
-        function updateKeyboardTilt() {
-            // Use keyboard if not connected to phone
-            if (!connected) {
-                const tiltSpeed = 2;
-                if (keys['ArrowLeft'] || keys['a'] || keys['A']) tiltX = Math.max(-45, tiltX - tiltSpeed);
-                if (keys['ArrowRight'] || keys['d'] || keys['D']) tiltX = Math.min(45, tiltX + tiltSpeed);
-                if (keys['ArrowUp'] || keys['w'] || keys['W']) tiltY = Math.max(-45, tiltY - tiltSpeed);
-                if (keys['ArrowDown'] || keys['s'] || keys['S']) tiltY = Math.min(45, tiltY + tiltSpeed);
-                
-                // Decay back to center
-                if (!keys['ArrowLeft'] && !keys['a'] && !keys['A'] && 
-                    !keys['ArrowRight'] && !keys['d'] && !keys['D']) {
-                    tiltX *= 0.95;
-                }
-                if (!keys['ArrowUp'] && !keys['w'] && !keys['W'] && 
-                    !keys['ArrowDown'] && !keys['s'] && !keys['S']) {
-                    tiltY *= 0.95;
-                }
-            }
-        }
+                // Update UI
+                document.getElementById('boardStatus').className = 'badge badge-success';
+                document.getElementById('boardStatus').textContent = 'Connected';
+                document.getElementById('connectBoardBtn').style.display = 'none';
+                document.getElementById('disconnectBoardBtn').style.display = 'block';
 
-        function spawnStar() {
-            const margin = 50;
-            stars.push({
-                x: margin + Math.random() * (canvas.width - margin * 2),
-                y: margin + Math.random() * (canvas.height - margin * 2),
-                radius: 15,
-                collected: false
-            });
-        }
+                addLog('✓ Connected! Discovering services...');
 
-        function updatePhysics() {
-            const gravity = 0.3;
-            const friction = 0.98;
-            
-            // Apply gravity based on tilt
-            ball.vx += (tiltX / 45) * gravity;
-            ball.vy += (tiltY / 45) * gravity;
-            
-            // Apply friction
-            ball.vx *= friction;
-            ball.vy *= friction;
-            
-            // Update position
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-            
-            // Bounce off walls
-            if (ball.x - ball.radius < 0) {
-                ball.x = ball.radius;
-                ball.vx *= -0.8;
-            }
-            if (ball.x + ball.radius > canvas.width) {
-                ball.x = canvas.width - ball.radius;
-                ball.vx *= -0.8;
-            }
-            if (ball.y - ball.radius < 0) {
-                ball.y = ball.radius;
-                ball.vy *= -0.8;
-            }
-            if (ball.y + ball.radius > canvas.height) {
-                ball.y = canvas.height - ball.radius;
-                ball.vy *= -0.8;
-            }
-            
-            // Check star collisions
-            stars.forEach(star => {
-                if (!star.collected) {
-                    const dx = ball.x - star.x;
-                    const dy = ball.y - star.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                // Discover services
+                const services = await server.getPrimaryServices();
+                addLog(`Found ${services.length} services`);
+
+                // Try to find and subscribe to sensor data
+                for (const service of services) {
+                    const characteristics = await service.getCharacteristics();
                     
-                    if (dist < ball.radius + star.radius) {
-                        star.collected = true;
-                        score += 10;
+                    for (const char of characteristics) {
+                        if (char.properties.notify) {
+                            addLog(`Found notify characteristic: ${char.uuid.slice(0, 8)}...`);
+                            
+                            // Try to subscribe
+                            try {
+                                await char.startNotifications();
+                                
+                                char.addEventListener('characteristicvaluechanged', (event) => {
+                                    const value = event.target.value;
+                                    const bytes = Array.from(new Uint8Array(value.buffer));
+                                    
+                                    // Try to parse as sensor data
+                                    // This is a guess - real format needs to be discovered
+                                    let tiltX = 0;
+                                    let tiltY = 0;
+                                    
+                                    if (bytes.length >= 4) {
+                                        // Assume 2 bytes per axis, signed int16
+                                        tiltX = ((bytes[1] << 8) | bytes[0]);
+                                        tiltY = ((bytes[3] << 8) | bytes[2]);
+                                        
+                                        // Convert to signed
+                                        if (tiltX > 32767) tiltX -= 65536;
+                                        if (tiltY > 32767) tiltY -= 65536;
+                                        
+                                        // Scale to degrees (-45 to +45)
+                                        tiltX = (tiltX / 1000) * 45;
+                                        tiltY = (tiltY / 1000) * 45;
+                                        
+                                        // Update display
+                                        document.getElementById('tiltX').textContent = tiltX.toFixed(1) + '°';
+                                        document.getElementById('tiltY').textContent = tiltY.toFixed(1) + '°';
+                                        
+                                        // Calculate data rate
+                                        dataCount++;
+                                        const now = Date.now();
+                                        if (now - lastDataTime >= 1000) {
+                                            document.getElementById('dataRate').textContent = dataCount + ' Hz';
+                                            dataCount = 0;
+                                            lastDataTime = now;
+                                        }
+                                    }
+                                    
+                                    // Log raw data occasionally
+                                    if (Math.random() < 0.1) {
+                                        addLog(`Data: [${bytes.join(', ')}] → X:${tiltX.toFixed(1)}° Y:${tiltY.toFixed(1)}°`);
+                                    }
+                                });
+                                
+                                addLog(`✓ Subscribed to sensor data on ${char.uuid.slice(0, 8)}...`);
+                                characteristic = char;
+                                
+                            } catch (e) {
+                                addLog(`Could not subscribe to ${char.uuid.slice(0, 8)}: ${e.message}`);
+                            }
+                        }
                     }
                 }
-            });
-            
-            // Remove collected stars
-            stars = stars.filter(s => !s.collected);
-            
-            // Spawn new stars
-            if (stars.length < 3 && Math.random() < 0.02) {
-                spawnStar();
+
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`);
+                console.error('Connection error:', error);
             }
         }
 
-        function draw() {
-            // Clear canvas
-            ctx.fillStyle = '#e0f2fe';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw grid
-            ctx.strokeStyle = '#bae6fd';
-            ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 50) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
-                ctx.stroke();
-            }
-            for (let i = 0; i < canvas.height; i += 50) {
-                ctx.beginPath();
-                ctx.moveTo(0, i);
-                ctx.lineTo(canvas.width, i);
-                ctx.stroke();
-            }
-            
-            // Draw platform tilt indicator
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate((tiltX / 45) * 0.1);
-            ctx.strokeStyle = 'rgba(102, 126, 234, 0.3)';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(-300, -200, 600, 400);
-            ctx.restore();
-            
-            // Draw stars
-            stars.forEach(star => {
-                ctx.fillStyle = '#fbbf24';
-                ctx.beginPath();
-                for (let i = 0; i < 5; i++) {
-                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-                    const x = star.x + Math.cos(angle) * star.radius;
-                    const y = star.y + Math.sin(angle) * star.radius;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-                ctx.fill();
+        function disconnectBoard() {
+            if (device && device.gatt.connected) {
+                device.gatt.disconnect();
+                connected = false;
                 
-                // Star glow
-                ctx.strokeStyle = '#fcd34d';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            });
-            
-            // Draw ball
-            const gradient = ctx.createRadialGradient(ball.x - 5, ball.y - 5, 0, ball.x, ball.y, ball.radius);
-            gradient.addColorStop(0, '#60a5fa');
-            gradient.addColorStop(1, '#2563eb');
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Ball highlight
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.beginPath();
-            ctx.arc(ball.x - 7, ball.y - 7, 8, 0, Math.PI * 2);
-            ctx.fill();
+                document.getElementById('boardStatus').className = 'badge badge-danger';
+                document.getElementById('boardStatus').textContent = 'Disconnected';
+                document.getElementById('connectBoardBtn').style.display = 'block';
+                document.getElementById('disconnectBoardBtn').style.display = 'none';
+                document.getElementById('deviceName').textContent = '-';
+                
+                addLog('Disconnected from board');
+            }
         }
 
-        function updateStats() {
-            document.getElementById('score').textContent = score;
-            document.getElementById('tiltX').textContent = tiltX.toFixed(1) + '°';
-            document.getElementById('tiltY').textContent = tiltY.toFixed(1) + '°';
-            
-            const minutes = Math.floor(gameTime / 60);
-            const seconds = Math.floor(gameTime % 60);
-            document.getElementById('time').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        function gameLoop() {
-            const now = Date.now();
-            const delta = (now - lastTime) / 1000;
-            lastTime = now;
-            gameTime += delta;
-            
-            updateKeyboardTilt();
-            updatePhysics();
-            draw();
-            updateStats();
-            
-            requestAnimationFrame(gameLoop);
-        }
+        document.getElementById('connectBoardBtn').addEventListener('click', connectToBoard);
+        document.getElementById('disconnectBoardBtn').addEventListener('click', disconnectBoard);
 
         // Initialize
-        spawnStar();
-        spawnStar();
-        gameLoop();
+        detectIPAddress();
+        addLog('Bridge server ready. Click "Connect to GoBalance Board" to start.');
     </script>
 </body>
 </html>

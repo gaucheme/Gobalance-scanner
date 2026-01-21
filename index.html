@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoBalance - Balance Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .connection-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-disconnected {
+            background: #f56565;
+        }
+
+        .status-connected {
+            background: #48bb78;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .game-canvas-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-box {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .controls-hint {
+            background: #fff3cd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .ws-url-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>🎮 Balance Challenge</h1>
+            <p>Keep the ball balanced and collect stars!</p>
+        </div>
+
+        <div class="connection-panel">
+            <div class="connection-status">
+                <div id="statusIndicator" class="status-indicator status-disconnected"></div>
+                <div>
+                    <strong>Connection Status:</strong> <span id="statusText">Disconnected</span>
+                </div>
+            </div>
+
+            <div class="ws-url-input">
+                <input type="text" id="wsUrl" placeholder="ws://192.168.1.x:8080" value="ws://localhost:8080">
+                <button class="btn-primary" onclick="connectToPhone()">Connect to Phone</button>
+                <button class="btn-danger" onclick="disconnect()" style="display: none;" id="disconnectBtn">Disconnect</button>
+            </div>
+
+            <div class="controls-hint">
+                <strong>🎮 Keyboard Controls (Testing):</strong> Arrow Keys or WASD to tilt the platform
+            </div>
+        </div>
+
+        <div class="game-canvas-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-label">Score</div>
+                    <div class="stat-value" id="score">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Time</div>
+                    <div class="stat-value" id="time">0:00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Tilt X</div>
+                    <div class="stat-value" id="tiltX">0°</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Tilt Y</div>
+                    <div class="stat-value" id="tiltY">0°</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ws = null;
+        let connected = false;
+        
+        // Game state
+        let tiltX = 0; // -45 to +45 degrees
+        let tiltY = 0; // -45 to +45 degrees
+        let ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 20,
+            vx: 0,
+            vy: 0
+        };
+        let stars = [];
+        let score = 0;
+        let gameTime = 0;
+        let lastTime = Date.now();
+
+        // Keyboard controls for testing
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function connectToPhone() {
+            const url = document.getElementById('wsUrl').value;
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    connected = true;
+                    updateConnectionStatus(true);
+                    console.log('Connected to phone bridge!');
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'sensor') {
+                            tiltX = data.tiltX || 0;
+                            tiltY = data.tiltY || 0;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing message:', e);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateConnectionStatus(false);
+                };
+                
+                ws.onclose = () => {
+                    connected = false;
+                    updateConnectionStatus(false);
+                    console.log('Disconnected from phone bridge');
+                };
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+                alert('Failed to connect. Make sure the phone bridge is running!');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            connected = false;
+            updateConnectionStatus(false);
+        }
+
+        function updateConnectionStatus(isConnected) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (isConnected) {
+                indicator.className = 'status-indicator status-connected';
+                text.textContent = 'Connected to Phone Bridge';
+                disconnectBtn.style.display = 'inline-block';
+            } else {
+                indicator.className = 'status-indicator status-disconnected';
+                text.textContent = 'Disconnected - Using Keyboard';
+                disconnectBtn.style.display = 'none';
+            }
+        }
+
+        function updateKeyboardTilt() {
+            // Use keyboard if not connected to phone
+            if (!connected) {
+                const tiltSpeed = 2;
+                if (keys['ArrowLeft'] || keys['a'] || keys['A']) tiltX = Math.max(-45, tiltX - tiltSpeed);
+                if (keys['ArrowRight'] || keys['d'] || keys['D']) tiltX = Math.min(45, tiltX + tiltSpeed);
+                if (keys['ArrowUp'] || keys['w'] || keys['W']) tiltY = Math.max(-45, tiltY - tiltSpeed);
+                if (keys['ArrowDown'] || keys['s'] || keys['S']) tiltY = Math.min(45, tiltY + tiltSpeed);
+                
+                // Decay back to center
+                if (!keys['ArrowLeft'] && !keys['a'] && !keys['A'] && 
+                    !keys['ArrowRight'] && !keys['d'] && !keys['D']) {
+                    tiltX *= 0.95;
+                }
+                if (!keys['ArrowUp'] && !keys['w'] && !keys['W'] && 
+                    !keys['ArrowDown'] && !keys['s'] && !keys['S']) {
+                    tiltY *= 0.95;
+                }
+            }
+        }
+
+        function spawnStar() {
+            const margin = 50;
+            stars.push({
+                x: margin + Math.random() * (canvas.width - margin * 2),
+                y: margin + Math.random() * (canvas.height - margin * 2),
+                radius: 15,
+                collected: false
+            });
+        }
+
+        function updatePhysics() {
+            const gravity = 0.3;
+            const friction = 0.98;
+            
+            // Apply gravity based on tilt
+            ball.vx += (tiltX / 45) * gravity;
+            ball.vy += (tiltY / 45) * gravity;
+            
+            // Apply friction
+            ball.vx *= friction;
+            ball.vy *= friction;
+            
+            // Update position
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Bounce off walls
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.vx *= -0.8;
+            }
+            if (ball.x + ball.radius > canvas.width) {
+                ball.x = canvas.width - ball.radius;
+                ball.vx *= -0.8;
+            }
+            if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.vy *= -0.8;
+            }
+            if (ball.y + ball.radius > canvas.height) {
+                ball.y = canvas.height - ball.radius;
+                ball.vy *= -0.8;
+            }
+            
+            // Check star collisions
+            stars.forEach(star => {
+                if (!star.collected) {
+                    const dx = ball.x - star.x;
+                    const dy = ball.y - star.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < ball.radius + star.radius) {
+                        star.collected = true;
+                        score += 10;
+                    }
+                }
+            });
+            
+            // Remove collected stars
+            stars = stars.filter(s => !s.collected);
+            
+            // Spawn new stars
+            if (stars.length < 3 && Math.random() < 0.02) {
+                spawnStar();
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#e0f2fe';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#bae6fd';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            // Draw platform tilt indicator
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate((tiltX / 45) * 0.1);
+            ctx.strokeStyle = 'rgba(102, 126, 234, 0.3)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(-300, -200, 600, 400);
+            ctx.restore();
+            
+            // Draw stars
+            stars.forEach(star => {
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+                    const x = star.x + Math.cos(angle) * star.radius;
+                    const y = star.y + Math.sin(angle) * star.radius;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                // Star glow
+                ctx.strokeStyle = '#fcd34d';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            
+            // Draw ball
+            const gradient = ctx.createRadialGradient(ball.x - 5, ball.y - 5, 0, ball.x, ball.y, ball.radius);
+            gradient.addColorStop(0, '#60a5fa');
+            gradient.addColorStop(1, '#2563eb');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ball highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.arc(ball.x - 7, ball.y - 7, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('tiltX').textContent = tiltX.toFixed(1) + '°';
+            document.getElementById('tiltY').textContent = tiltY.toFixed(1) + '°';
+            
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = Math.floor(gameTime % 60);
+            document.getElementById('time').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function gameLoop() {
+            const now = Date.now();
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
+            gameTime += delta;
+            
+            updateKeyboardTilt();
+            updatePhysics();
+            draw();
+            updateStats();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize
+        spawnStar();
+        spawnStar();
+        gameLoop();
+    </script>
+</body>
+</html>
